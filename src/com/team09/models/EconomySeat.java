@@ -1,11 +1,20 @@
 package com.team09.models;
+
 public class EconomySeat extends Seat {
-    public EconomySeat(String seatNumber, double basePrice) {
-        super(seatNumber, basePrice);
+    private static final long serialVersionUID = 1L;
+
+    public EconomySeat(String flightId, String seatNumber) {
+        super(flightId, seatNumber);
     }
+
     @Override
     public double getSurcharge() {
-        // Ghế Economy không có phụ phí tôi giả sử ở đây là 5.0
-        return 5.0;
+        // Ghế phổ thông không có phụ phí
+        return 0.0;
+    }
+
+    @Override
+    public SeatType getSeatType() {
+        return SeatType.ECONOMY;
     }
 }

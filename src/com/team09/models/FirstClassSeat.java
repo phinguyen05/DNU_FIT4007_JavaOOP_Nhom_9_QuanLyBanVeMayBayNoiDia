@@ -1,12 +1,12 @@
 package com.team09.models;
 
-public class BusinessSeat extends Seat {
+public class FirstClassSeat extends Seat {
     private static final long serialVersionUID = 1L;
 
-    // Phụ phí cố định cho hạng thương gia (ví dụ)
-    private static final double SURCHARGE_AMOUNT = 1000000.0;
+    // Phụ phí cố định cho hạng nhất (ví dụ)
+    private static final double SURCHARGE_AMOUNT = 2500000.0;
 
-    public BusinessSeat(String flightId, String seatNumber) {
+    public FirstClassSeat(String flightId, String seatNumber) {
         super(flightId, seatNumber);
     }
 
@@ -17,6 +17,6 @@ public class BusinessSeat extends Seat {
 
     @Override
     public SeatType getSeatType() {
-        return SeatType.BUSINESS;
+        return SeatType.FIRST_CLASS;
     }
 }
