@@ -5,6 +5,7 @@ import com.team09.models.*;
 import com.team09.repository.*;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 public class BookingService {
@@ -15,7 +16,7 @@ public class BookingService {
     private final CustomerRepository customerRepo;
     private final InvoiceRepository invoiceRepo;
     private final RefundPolicy refundPolicy;
-    private final RevenueRepository revenueRepo; // Bổ sung
+    private final RevenueRepository revenueRepo;
 
     public BookingService(FlightRepository flightRepo, SeatRepository seatRepo,
                           TicketRepository ticketRepo, CustomerRepository customerRepo,
@@ -26,8 +27,47 @@ public class BookingService {
         this.customerRepo = customerRepo;
         this.invoiceRepo = invoiceRepo;
         this.refundPolicy = new StandardRefundPolicy();
-        this.revenueRepo = revenueRepo; // Khởi tạo
+        this.revenueRepo = revenueRepo;
     }
+
+    // ===================================
+    // 🛄 QUẢN LÝ KHÁCH HÀNG (CRUD)
+    // ===================================
+
+    public List<Customer> getAllCustomers() {
+        return customerRepo.getAll();
+    }
+
+    public Customer getCustomerById(String customerId) {
+        return customerRepo.findById(customerId);
+    }
+
+    public void addCustomer(Customer customer) {
+        customerRepo.add(customer);
+    }
+
+    public void updateCustomer(Customer customer) throws CustomerNotFoundException {
+        if (customerRepo.findById(customer.getCustomerId()) == null) {
+            throw new CustomerNotFoundException("Không tìm thấy khách hàng với mã: " + customer.getCustomerId());
+        }
+        customerRepo.update(customer);
+    }
+
+    public void deleteCustomer(String customerId) throws CustomerNotFoundException {
+        if (customerRepo.findById(customerId) == null) {
+            throw new CustomerNotFoundException("Không tìm thấy khách hàng với mã: " + customerId);
+        }
+        // *LƯU Ý: Không kiểm tra vé phụ thuộc, coi như có thể xóa khách hàng
+        customerRepo.delete(customerId);
+    }
+
+    public List<Customer> searchCustomers(String keyword) {
+        return customerRepo.search(keyword);
+    }
+
+    // ===================================
+    // ✈️ ĐẶT/HỦY VÉ
+    // ===================================
 
     /**
      * Logic nghiệp vụ Đặt vé
@@ -75,9 +115,7 @@ public class BookingService {
         Invoice invoice = new Invoice(invoiceId, customerId, bookingTime, finalPrice, Collections.singletonList(ticketId));
         invoiceRepo.add(invoice);
 
-        // 6. CẬP NHẬT DOANH THU (Nếu cần, có thể làm trong ReportService, nhưng thực hiện ở đây là tối ưu)
-        // Đây là bước không bắt buộc theo đề nhưng nên có để dữ liệu revenue.csv hoạt động
-        // (BỎ QUA cho mục đích hoàn thiện tối thiểu, tập trung vào CRUD và Report)
+        // 6. CẬP NHẬT DOANH THU (BỎ QUA như đã note)
 
         return newTicket;
     }

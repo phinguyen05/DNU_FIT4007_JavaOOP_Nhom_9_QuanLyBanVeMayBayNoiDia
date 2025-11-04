@@ -22,6 +22,11 @@ public class ReportService {
         this.seatRepo = seatRepo;
     }
 
+    // Phương thức bổ sung để CLIMenu hiển thị trạng thái ghế
+    public List<Seat> getAllSeatsByFlightId(String flightId) {
+        return seatRepo.findByFlightId(flightId);
+    }
+
     public double getRevenueByMonth(int year, Month month) {
         return invoiceRepo.getAll().stream()
                 .filter(invoice -> invoice.getCreatedDate().getYear() == year &&

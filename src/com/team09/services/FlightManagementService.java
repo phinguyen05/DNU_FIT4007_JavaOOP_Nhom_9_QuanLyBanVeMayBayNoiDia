@@ -7,7 +7,7 @@ import com.team09.models.*;
 import com.team09.repository.FlightRepository;
 import com.team09.repository.PlaneRepository;
 import com.team09.repository.SeatRepository;
-import com.team09.util.SeatGenerator; // SỬ DỤNG LỚP ĐƯỢC TẠO
+import com.team09.util.SeatGenerator;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,10 +25,8 @@ public class FlightManagementService {
     }
 
     // ===================================
-    // 🛩️ QUẢN LÝ MÁY BAY
+    // 🛩️ QUẢN LÝ MÁY BAY (CRUD)
     // ===================================
-
-    // ... (Các hàm CRUD cho Plane giữ nguyên) ...
 
     public Plane getPlaneById(String id) {
         return planeRepository.findById(id);
@@ -38,7 +36,10 @@ public class FlightManagementService {
         return planeRepository.getAll();
     }
 
-    public void addPlane(Plane plane) {
+    public void addPlane(Plane plane) throws Exception {
+        if (planeRepository.findById(plane.getPlaneId()) != null) {
+            throw new Exception("Mã máy bay " + plane.getPlaneId() + " đã tồn tại.");
+        }
         planeRepository.add(plane);
         System.out.println("Máy bay " + plane.getPlaneId() + " đã được thêm thành công.");
     }
@@ -106,10 +107,19 @@ public class FlightManagementService {
             throw new FlightNotFoundException("Không tìm thấy chuyến bay với mã: " + updatedFlight.getFlightId());
         }
 
+        // Kiểm tra máy bay mới có tồn tại không
+        if (!existingFlight.getPlaneId().equals(updatedFlight.getPlaneId())) {
+            if (planeRepository.findById(updatedFlight.getPlaneId()) == null) {
+                throw new PlaneNotFoundException("Không tìm thấy máy bay mới với mã: " + updatedFlight.getPlaneId());
+            }
+        }
+
         boolean hasBookedSeats = seatRepository.loadAll().stream()
                 .anyMatch(s -> s.getFlightId().equals(updatedFlight.getFlightId()) && s.getStatus() == SeatStatus.BOOKED);
 
         if (hasBookedSeats) {
+            // Nếu có vé đã đặt, chỉ cho phép thay đổi giá cơ bản, điểm đi/đến (ít ảnh hưởng)
+            // Cấm thay đổi PlaneId, DepartureTime, ArrivalTime
             if (!existingFlight.getPlaneId().equals(updatedFlight.getPlaneId()) ||
                     !existingFlight.getDepartureTime().equals(updatedFlight.getDepartureTime()) ||
                     !existingFlight.getArrivalTime().equals(updatedFlight.getArrivalTime())) {
@@ -118,6 +128,17 @@ public class FlightManagementService {
             }
         }
 
+        // Nếu có thay đổi máy bay VÀ không có vé nào được đặt (hoặc chỉ thay đổi PlaneId, logic ở trên đã cấm)
+        // Ta cần xóa ghế cũ và tạo ghế mới (Trường hợp thay đổi PlaneId khi chưa có vé nào được đặt)
+        if (!existingFlight.getPlaneId().equals(updatedFlight.getPlaneId()) && !hasBookedSeats) {
+            Plane newPlane = planeRepository.findById(updatedFlight.getPlaneId());
+            if (newPlane != null) {
+                seatRepository.deleteByFlightId(updatedFlight.getFlightId()); // Xóa ghế cũ
+                generateSeatsForFlight(updatedFlight, newPlane); // Tạo ghế mới
+            }
+        }
+
+        // Kiểm tra trùng lịch
         if (isPlaneScheduleOverlap(updatedFlight)) {
             throw new Exception("Lịch trình chuyến bay cập nhật bị trùng với một chuyến bay khác của máy bay " + updatedFlight.getPlaneId() + ".");
         }
@@ -155,11 +176,7 @@ public class FlightManagementService {
                 });
     }
 
-    /**
-     * Phương thức sinh ghế - Gọi lớp SeatGenerator (Thiết kế chuẩn)
-     */
     private void generateSeatsForFlight(Flight flight, Plane plane) {
-        // Gọi lớp SeatGenerator để sinh ra danh sách ghế
         List<Seat> newSeats = SeatGenerator.generateSeats(flight.getFlightId(), plane);
         seatRepository.addAll(newSeats);
     }
