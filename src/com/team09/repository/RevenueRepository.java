@@ -12,17 +12,18 @@ public class RevenueRepository extends BaseRepository<Revenue> {
     @Override
     protected Revenue parse(String[] f) {
         try {
+            // Cấu trúc CSV: date,totalRevenue,ticketCount,type
             if (f == null || f.length < 4) {
                 System.err.println(" Dữ liệu Revenue không hợp lệ: " + Arrays.toString(f));
                 return null;
             }
 
-            String id = f[0].trim();
-            String flightId = f[1].trim();
-            double amount = Double.parseDouble(f[2].trim());
-            String date = f[3].trim();
+            String date = f[0].trim();
+            double totalRevenue = Double.parseDouble(f[1].trim());
+            int ticketCount = Integer.parseInt(f[2].trim());
+            String type = f[3].trim();
 
-            return new Revenue(id, flightId, amount, date);
+            return new Revenue(date, totalRevenue, ticketCount, type);
 
         } catch (Exception e) {
             System.err.println(" Lỗi khi parse Revenue: " + Arrays.toString(f) + " -> " + e.getMessage());
@@ -33,14 +34,19 @@ public class RevenueRepository extends BaseRepository<Revenue> {
     @Override
     protected String toCsv(Revenue r) {
         return String.join(",",
-                r.getRevenueId(),
-                r.getFlightId(),
-                String.valueOf(r.getAmount()),
-                r.getDate());
+                r.getDate(),
+                String.valueOf(r.getTotalRevenue()),
+                String.valueOf(r.getTicketCount()),
+                r.getType());
     }
 
     @Override
     protected String getHeader() {
-        return "revenueId,flightId,amount,date";
+        return "date,totalRevenue,ticketCount,type";
+    }
+
+    @Override
+    protected String getId(Revenue r) {
+        return r.getDate() + "-" + r.getType(); // Kết hợp date và type để tạo ID duy nhất
     }
 }

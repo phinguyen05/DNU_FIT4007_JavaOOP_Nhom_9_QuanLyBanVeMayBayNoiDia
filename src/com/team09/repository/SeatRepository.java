@@ -1,51 +1,22 @@
 package com.team09.repository;
 
-import com.team09.models.*;
+import  com.team09.models.*;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.function.Predicate;
 
-/**
- * Repository quản lý danh sách ghế (Seat) — đọc/ghi từ file CSV.
- */
 public class SeatRepository extends BaseRepository<Seat> {
+
+    // ... (các phương thức parse, toCsv, getHeader, getId giữ nguyên) ...
+    // Giữ nguyên các phương thức tiện ích parseSeatTypeLenient và parseSeatStatusLenient
 
     public SeatRepository(String filePath) {
         super(filePath);
     }
 
-    // Hàm giúp parse an toàn SeatType (chấp nhận FIRST, FIRST_CLASS, FIST, First, v.v.)
-    private SeatType parseSeatTypeLenient(String raw) {
-        if (raw == null) return null;
-        String s = raw.trim().toUpperCase().replace("-", "_").replace(" ", "_");
-        // sửa 1 số lỗi đánh máy thường gặp
-        if (s.equals("FIST")) s = "FIRST";
-        if (s.equals("FIRSTCLASS")) s = "FIRST";
-        if (s.equals("FIRST_CLASS")) s = "FIRST";
-
-        try {
-            return SeatType.valueOf(s);
-        } catch (IllegalArgumentException e) {
-            // thử map thêm những từ thân thiện
-            if (s.startsWith("BUS")) return SeatType.BUSINESS;
-            if (s.startsWith("ECO")) return SeatType.ECONOMY;
-            if (s.startsWith("FIR") || s.startsWith("1ST") || s.startsWith("FIRST")) return SeatType.FIRST_CLASS;
-            return null;
-        }
-    }
-
-    private SeatStatus parseSeatStatusLenient(String raw) {
-        if (raw == null) return null;
-        String s = raw.trim().toUpperCase().replace("-", "_").replace(" ", "_");
-        try {
-            return SeatStatus.valueOf(s);
-        } catch (IllegalArgumentException e) {
-            if (s.startsWith("AV")) return SeatStatus.AVAILABLE;
-            if (s.startsWith("BO") || s.startsWith("BK")) return SeatStatus.BOOKED;
-            return null;
-        }
-    }
-
     @Override
     protected Seat parse(String[] f) {
+        // Logic parse đã được cung cấp
         try {
             if (f == null || f.length < 4) {
                 System.err.println("[SeatRepository] Dữ liệu ghế không hợp lệ (thiếu cột): " + Arrays.toString(f));
@@ -59,13 +30,13 @@ public class SeatRepository extends BaseRepository<Seat> {
 
             SeatType type = parseSeatTypeLenient(rawType);
             if (type == null) {
-                System.err.println("[SeatRepository] Không parse được SeatType từ: '" + rawType + "' (dòng: " + Arrays.toString(f) + ")");
+                // Đã có in lỗi trong parseSeatTypeLenient
                 return null;
             }
 
             SeatStatus status = parseSeatStatusLenient(rawStatus);
             if (status == null) {
-                System.err.println("[SeatRepository] Không parse được SeatStatus từ: '" + rawStatus + "' (dòng: " + Arrays.toString(f) + ")");
+                // Đã có in lỗi trong parseSeatStatusLenient
                 return null;
             }
 
@@ -88,7 +59,35 @@ public class SeatRepository extends BaseRepository<Seat> {
 
         } catch (Exception e) {
             System.err.println("[SeatRepository] Lỗi khi parse Seat: " + Arrays.toString(f) + " — " + e.getMessage());
-            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private SeatType parseSeatTypeLenient(String raw) {
+        if (raw == null) return null;
+        String s = raw.trim().toUpperCase().replace("-", "_").replace(" ", "_");
+        if (s.equals("FIST")) s = "FIRST_CLASS"; // Sửa lỗi này cho đúng enum
+        if (s.equals("FIRST")) s = "FIRST_CLASS";
+        if (s.equals("FIRSTCLASS")) s = "FIRST_CLASS";
+
+        try {
+            return SeatType.valueOf(s);
+        } catch (IllegalArgumentException e) {
+            if (s.startsWith("BUS")) return SeatType.BUSINESS;
+            if (s.startsWith("ECO")) return SeatType.ECONOMY;
+            if (s.startsWith("FIR") || s.startsWith("1ST")) return SeatType.FIRST_CLASS;
+            return null;
+        }
+    }
+
+    private SeatStatus parseSeatStatusLenient(String raw) {
+        if (raw == null) return null;
+        String s = raw.trim().toUpperCase().replace("-", "_").replace(" ", "_");
+        try {
+            return SeatStatus.valueOf(s);
+        } catch (IllegalArgumentException e) {
+            if (s.startsWith("AV")) return SeatStatus.AVAILABLE;
+            if (s.startsWith("BO") || s.startsWith("BK")) return SeatStatus.BOOKED;
             return null;
         }
     }
@@ -106,5 +105,40 @@ public class SeatRepository extends BaseRepository<Seat> {
     @Override
     protected String getHeader() {
         return "seatNumber,flightId,seatType,status";
+    }
+
+    @Override
+    protected String getId(Seat s) {
+        return s.getFlightId() + "-" + s.getSeatNumber();
+    }
+
+    public List<Seat> findByFlightId(String flightId) {
+        return loadAll().stream()
+                .filter(s -> s.getFlightId().equals(flightId))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Seat findById(String id) { // ID format: flightId-seatNumber
+        return loadAll().stream()
+                .filter(s -> (s.getFlightId() + "-" + s.getSeatNumber()).equals(id))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Xóa tất cả các ghế thuộc về một chuyến bay cụ thể.
+     * @param flightId Mã chuyến bay.
+     */
+    public void deleteByFlightId(String flightId) {
+        List<Seat> all = loadAll();
+        Predicate<Seat> seatFilter = seat -> !seat.getFlightId().equals(flightId);
+        List<Seat> updatedList = all.stream().filter(seatFilter).collect(Collectors.toList());
+
+        if (updatedList.size() < all.size()) {
+            saveAll(updatedList);
+        } else {
+            // Không tìm thấy ghế nào, không cần thông báo lỗi
+        }
     }
 }

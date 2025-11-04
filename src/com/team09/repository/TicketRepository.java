@@ -11,6 +11,7 @@ public class TicketRepository extends BaseRepository<Ticket> {
 
     @Override
     protected Ticket parse(String[] f) {
+        // ... (logic parse giữ nguyên) ...
         try {
             return new Ticket(
                     f[0], // ticketId
@@ -40,5 +41,10 @@ public class TicketRepository extends BaseRepository<Ticket> {
     @Override
     protected String getHeader() {
         return "ticketId,flightId,customerId,seatNumber,finalPrice,bookingTime";
+    }
+
+    @Override
+    protected String getId(Ticket t) {
+        return t.getTicketId();
     }
 }
