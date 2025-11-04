@@ -35,4 +35,9 @@ public class PlaneRepository extends BaseRepository<Plane> {
     protected String getHeader() {
         return "planeId,economySeats,businessSeats,firstClassSeats";
     }
+
+    @Override
+    protected String getId(Plane p) {
+        return p.getPlaneId();
+    }
 }
